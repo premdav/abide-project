@@ -1,4 +1,5 @@
 const { Router } = require('express');
+const bcrypt = require('bcrypt');
 const User = require('../models/User');
 const router = Router();
 
@@ -12,19 +13,22 @@ router.post('/register', async (req, res) => {
 
   const doesEmailExist = await User.findOne({ email });
   if (doesEmailExist) return res.status(400).json({ error: 'Account with this email already exists' });
-  
+
   const doesUsernameExist = await User.findOne({ username });
   if (doesUsernameExist) return res.status(400).json({ error: 'Username is taken' });
+
+  const salt = await bcrypt.genSalt(10);
+  const hashedPass = await bcrypt.hash(password, salt);
 
   const user = new User({
     username,
     email,
-    password
+    password: hashedPass
   });
 
   try {
     const newUser = await user.save();
-    res.json({ data: newUser});
+    res.json({ data: { userId: newUser._id, username: newUser.username } });
   } catch (err) {
     res.status(400).json({ err });
   }
