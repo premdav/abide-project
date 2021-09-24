@@ -1,12 +1,12 @@
 const { Router } = require('express');
 const bcrypt = require('bcrypt');
 const User = require('../models/User');
+const validateEmail = require('../utils/validateEmail');
 const router = Router();
 
 router.post('/register', async (req, res) => {
   const { username, email, password } = req.body;
-  const emailRegex = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-  const isValidEmail = emailRegex.test(email.toLowerCase());
+  const isValidEmail = validateEmail(email);
 
   if (!isValidEmail) return res.status(400).json({ error: 'Invalid email format'});
   if (!password || password.length < 6) return res.status(400).json({ error: 'Password must be 6 or more characters in length' });
@@ -22,16 +22,32 @@ router.post('/register', async (req, res) => {
 
   const user = new User({
     username,
-    email,
+    email: email.toLowerCase(),
     password: hashedPass
   });
 
   try {
     const newUser = await user.save();
-    res.json({ data: { userId: newUser._id, username: newUser.username } });
+    return res.status(201).json({ data: { userId: newUser._id, username: newUser.username } });
   } catch (err) {
-    res.status(400).json({ err });
+    return res.status(400).json({ err });
   }
+});
+
+router.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+  let user, err = [];
+  if (!email) err.push('email is required to log in');
+  if (!password) err.push('password is required to log in');
+  if (err.length) return res.status(400).json({ error: err });
+  if (validateEmail(email)) user = await User.findOne({ email });
+  else user = await User.findOne({ username: email });
+
+  if (!user) return res.status(400).json({ error: 'Invalid username or password' });
+  
+  const isValidPassword = await bcrypt.compare(password, user.password);
+  if (!isValidPassword) return res.status(400).json({ error: 'Invalid username or password' });
+  return res.status(200).json({ data: { message: 'Successful login' } });
 });
 
 module.exports = router;
