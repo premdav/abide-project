@@ -1,5 +1,6 @@
 const { Router } = require('express');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const validateEmail = require('../utils/validateEmail');
 const router = Router();
@@ -28,7 +29,14 @@ router.post('/register', async (req, res) => {
 
   try {
     const newUser = await user.save();
-    return res.status(201).json({ data: { userId: newUser._id, username: newUser.username } });
+    const token = jwt.sign(
+      {
+        id: newUser._id,
+        username: newUser._username,
+      },
+      process.env.JWT_SECRET
+    );
+    return res.status(201).json({ userId: newUser._id, username: newUser.username, token });
   } catch (err) {
     return res.status(400).json({ err });
   }
@@ -47,7 +55,20 @@ router.post('/login', async (req, res) => {
   
   const isValidPassword = await bcrypt.compare(password, user.password);
   if (!isValidPassword) return res.status(400).json({ error: 'Invalid username or password' });
-  return res.status(200).json({ data: { message: 'Successful login' } });
+
+  const token = jwt.sign(
+    {
+      id: user._id,
+      username: user._username,
+    },
+    process.env.JWT_SECRET
+  );
+
+  return res.status(200).json({
+    userId: user._id,
+    username: user.username,
+    token
+  });
 });
 
 module.exports = router;
