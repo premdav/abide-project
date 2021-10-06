@@ -1,0 +1,10 @@
+{
+  "name": "abideproject",
+  "version": "0.0.1",
+  "author": "Preston Davis <prem.dav@outlook.com>",
+  "license": "MIT",
+  "scripts": {
+    "start": "./startDev.sh",
+    "shutdown": "pm2 stop all && pm2 delete all"
+  }
+}
